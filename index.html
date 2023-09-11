@@ -1,10 +1,133 @@
-- 👋 Hi, I’m @Zaan1992
-- 👀 I’m interested in ...
-- 🌱 I’m currently learning ...
-- 💞️ I’m looking to collaborate on ...
-- 📫 How to reach me ...
+import pygame
+import random
 
-<!---
-Zaan1992/Zaan1992 is a ✨ special ✨ repository because its `README.md` (this file) appears on your GitHub profile.
-You can click the Preview link to take a look at your changes.
---->
+# Initialize pygame
+pygame.init()
+
+# Constants
+WIDTH, HEIGHT = 1440, 850
+CELL_SIZE = 40
+FPS = 15
+
+# Colors
+GREEN = (0, 0, 0)
+DARK_GREEN = (11, 110, 79)
+RED = (255, 0, 0)
+
+
+apple_eat_sound = pygame.mixer.Sound('chomp.wav')
+crash_sound = pygame.mixer.Sound('explosion.wav')
+
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Snake Game")
+clock = pygame.time.Clock()
+
+class Snake:
+    def __init__(self):
+        self.body = [(5, 5), (4, 5), (3, 5)]
+        self.direction = (1, 0)
+        self.grow = False
+
+    def move(self):
+        head_x, head_y = self.body[0]
+        new_x, new_y = self.direction
+        new_head = (head_x + new_x, head_y + new_y)
+
+        # Check wall collision
+        if new_head[0] < 0 or new_head[0] >= (WIDTH // CELL_SIZE) or new_head[1] < 0 or new_head[1] >= (HEIGHT // CELL_SIZE):
+            return False
+
+        # Check self collision
+        if new_head in self.body:
+            return False
+
+        self.body.insert(0, new_head)
+        if not self.grow:
+            self.body.pop()
+        else:
+            self.grow = False
+
+        return True
+
+    def turn(self, direction):
+        if direction[0] * self.direction[0] + direction[1] * self.direction[1] == 0:
+            self.direction = direction
+
+    def eat(self):
+        self.grow = True
+
+    def draw(self, screen):
+        for segment in self.body:
+            pygame.draw.rect(screen, DARK_GREEN, (segment[0]*CELL_SIZE, segment[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE))
+
+def display_game_over(apple_count):
+    font = pygame.font.Font(None, 200)
+    game_over_text = font.render('Game Over', True, (255, 0, 0))
+    text_rect = game_over_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 200))
+
+    apple_text = font.render(f'Apples Eaten: {apple_count}', True, (11, 110, 79))
+    apple_rect = apple_text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+
+    restart_text = font.render('Press R to restart', True, (255, 0, 0))
+    restart_rect = restart_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 200))
+
+    screen.blit(game_over_text, text_rect)
+    screen.blit(apple_text, apple_rect)
+    screen.blit(restart_text, restart_rect)
+
+    pygame.display.flip()
+
+    waiting = True
+    while waiting:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit(0)
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_r:  # Restart game
+                    return True
+                if event.key == pygame.K_ESCAPE or event.key == pygame.K_q:  # Quit game
+                    pygame.quit()
+                    exit(0)
+
+snake = Snake()
+apple = (random.randint(0, (WIDTH // CELL_SIZE) - 1), random.randint(0, (HEIGHT // CELL_SIZE) - 1))
+apple_count = 0
+
+running = True
+while running:
+    screen.fill(GREEN)
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_UP:
+                snake.turn((0, -1))
+            elif event.key == pygame.K_DOWN:
+                snake.turn((0, 1))
+            elif event.key == pygame.K_LEFT:
+                snake.turn((-1, 0))
+            elif event.key == pygame.K_RIGHT:
+                snake.turn((1, 0))
+
+    if snake.body[0] == apple:
+        snake.eat()
+        apple_eat_sound.play()
+        apple_count += 1
+        apple = (random.randint(0, (WIDTH // CELL_SIZE) - 1), random.randint(0, (HEIGHT // CELL_SIZE) - 1))
+
+    if not snake.move():
+        crash_sound.play()
+        display_game_over(apple_count)
+        snake = Snake()
+        apple = (random.randint(0, (WIDTH // CELL_SIZE) - 1), random.randint(0, (HEIGHT // CELL_SIZE) - 1))
+        apple_count = 0
+
+    snake.draw(screen)
+    pygame.draw.rect(screen, RED, (apple[0]*CELL_SIZE, apple[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE))
+
+    pygame.display.flip()
+    clock.tick(FPS)
+
+pygame.quit()
